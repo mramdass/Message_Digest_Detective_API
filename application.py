@@ -29,9 +29,9 @@ except Exception as e:
 application = Flask(__name__)
 
 # Elastic Cloud Credentials
-elastic_cloud_endpoint = 'https://2d0242d7f9f24454edb6f8e2e0f6e10c.us-east-1.aws.found.io'
-elastic_cloud_username = 'elastic'
-elastic_cloud_password = 'op9044rR4zh9seNFBj2E8630'
+elastic_cloud_endpoint = ''
+elastic_cloud_username = ''
+elastic_cloud_password = ''
 
 # 1st Attribution: http://stackoverflow.com/questions/38209061/django-elasticsearch-aws-httplib-unicodedecodeerror/38371830
 # 2nd Attribution: https://docs.python.org/2/library/json.html#basic-usage
