@@ -29,9 +29,9 @@ except Exception as e:
 application = Flask(__name__)
 
 # Elastic Cloud Credentials
-elastic_cloud_endpoint = ''
-elastic_cloud_username = ''
-elastic_cloud_password = ''
+elastic_cloud_endpoint = 'https://2d0242d7f9f24454edb6f8e2e0f6e10c.us-east-1.aws.found.io'
+elastic_cloud_username = 'elastic'
+elastic_cloud_password = 'op9044rR4zh9seNFBj2E8630'
 
 # 1st Attribution: http://stackoverflow.com/questions/38209061/django-elasticsearch-aws-httplib-unicodedecodeerror/38371830
 # 2nd Attribution: https://docs.python.org/2/library/json.html#basic-usage
@@ -110,19 +110,30 @@ def digest():
         x = zip(x['Search'], x['State'])
     return render_template('result.html', result=x)
 
-@application.route('/select_prod', methods=['GET', 'POST'])
-def details_prod():
+@application.route('/select_prod/<string:code>', methods=['GET', 'POST'])
+def details_prod(code):
+    global es
     print 'receiving prod'
-    post = request.args.get('post', 0, type=str)
-    print post
-    return redirect(url_for('index'))
+    #post = request.args.get('post', 0, type=str)
+    #print post
 
-@application.route('/select_os', methods=['GET', 'POST'])
-def details_os():
+    print code
+    code = int(code)
+    data = es.search(index="prod", body={"query": {"match": {"ProductCode": code}}})
+    #return render_template('index.html')
+    return jsonify(data)
+
+@application.route('/select_os/<string:code>', methods=['GET', 'POST'])
+def details_os(code):
+    global es
     print 'receiving os'
-    post = request.args.get('post', 0, type=str)
-    print post
-    return redirect(url_for('index'))
+    #post = request.args.get('post', 0, type=str)
+    #print post
+
+    print code
+    data = es.search(index="os", body={"query": {"match": {"OpSystemCode": code}}})
+    #return render_template('index.html')
+    return jsonify(data)
 
 @application.errorhandler(404)
 def page_not_found(e): return render_template('404.html'), 404
