@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Message Digest Detective</title>
+    <style media="screen" type="text/css">
+		@import url(http://fonts.googleapis.com/css?family=Cabin:400);
+
+		.dark-green-style {
+			background: #151515;
+			height: 100%;
+			position: absolute;
+			text-align: center;
+			width: 100%;
+		}
+
+		.dark-green-style:before,
+		.dark-green-style:after {
+			content: '';
+			display: block;
+			height: 1px;
+			left: 50%;
+			margin: 0 0 0 -400px;
+			position: absolute;
+			width: 800px;
+		}
+
+		.dark-green-style:before {
+			background: #444;
+			background: linear-gradient(left, #151515, #444, #151515);
+			top: 192px;
+		}
+
+		.dark-green-style:after {
+			background: #000;
+			background: linear-gradient(left, #151515, #000, #151515);
+			top: 191px;
+		}
+
+		.dark-green-style form {
+			background: #111;
+			background: linear-gradient(#1b1b1b, #111);
+			border: 1px solid #000;
+			border-radius: 5px;
+			box-shadow: inset 0 0 0 1px #272727;
+			display: inline-block;
+			font-size: 0px;
+			margin: 25px auto 0;
+			padding: 20px;
+			position: relative;
+			z-index: 1;
+		}
+
+		.dark-green-style input {
+			background: #222;
+			background: linear-gradient(#333, #222);
+			border: 1px solid #444;
+			border-radius: 5px 0 0 5px;
+			box-shadow: 0 2px 0 #000;
+			color: #888;
+			display: block;
+			float: left;
+			font-family: 'Cabin', helvetica, arial, sans-serif;
+			font-size: 13px;
+			font-weight: 400;
+			height: 40px;
+			margin: 0;
+			padding: 0 10px;
+			text-shadow: 0 -1px 0 #000;
+			width: 200px;
+		}
+
+		.ie .dark-green-style input {
+			line-height: 40px;
+		}
+
+		.dark-green-style input::-webkit-input-placeholder {
+		   color: #888;
+		}
+
+		.dark-green-style input:-moz-placeholder {
+		   color: #888;
+		}
+
+		.dark-green-style input:focus {
+			animation: glow 800ms ease-out infinite alternate;
+			background: #222922;
+			background: linear-gradient(#333933, #222922);
+			border-color: #393;
+			box-shadow: 0 0 5px rgba(0,255,0,.2), inset 0 0 5px rgba(0,255,0,.1), 0 2px 0 #000;
+			color: #efe;
+			outline: none;
+		}
+
+		.dark-green-style input:focus::-webkit-input-placeholder {
+			color: #efe;
+		}
+
+		.dark-green-style input:focus:-moz-placeholder {
+			color: #efe;
+		}
+
+		.dark-green-style button {
+			background: #222;
+			background: linear-gradient(#333, #222);
+			box-sizing: content-box;
+			border: 1px solid #444;
+			border-left-color: #000;
+			border-radius: 0 5px 5px 0;
+			box-shadow: 0 2px 0 #000;
+			color: #fff;
+			display: block;
+			float: left;
+			font-family: 'Cabin', helvetica, arial, sans-serif;
+			font-size: 13px;
+			font-weight: 400;
+			height: 40px;
+			line-height: 40px;
+			margin: 0;
+			padding: 0;
+			position: relative;
+			text-shadow: 0 -1px 0 #000;
+			width: 80px;
+		}
+
+		.dark-green-style button:hover,
+		.dark-green-style button:focus {
+			background: #292929;
+			background: linear-gradient(#393939, #292929);
+			color: #5f5;
+			outline: none;
+		}
+
+		.dark-green-style button:active {
+			background: #292929;
+			background: linear-gradient(#393939, #292929);
+			box-shadow: 0 1px 0 #000, inset 1px 0 1px #222;
+			top: 1px;
+		}
+
+		@keyframes glow {
+			0% {
+				border-color: #393;
+				box-shadow: 0 0 5px rgba(0,255,0,.2), inset 0 0 5px rgba(0,255,0,.1), 0 2px 0 #000;
+			}
+			100% {
+				border-color: #6f6;
+				box-shadow: 0 0 20px rgba(0,255,0,.6), inset 0 0 10px rgba(0,255,0,.4), 0 2px 0 #000;
+			}
+		}
+
+        .green-text {
+            color: #339933;
+            font-family: Copperplate, Copperplate Gothic Light, sans-serif;
+            margin: 150px auto 0;
+        }
+
+        .green-text-detail {
+            color: white;
+            font-family: Copperplate, Copperplate Gothic Light, sans-serif;
+            margin: 25px auto 0;
+        }
+
+        .green-text-detail-small {
+            color: white;
+            font-family: Garamond, Copperplate Gothic Light, sans-serif;
+            margin: 25px auto 0;
+            font-size: 12px;
+        }
+	</style>
+</head>
+<body link="white">
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script type=text/javascript>
+  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+</script>
+<script>
+    function send_prod(x) {
+        console.log('sending prod info')
+        post = false;
+        $('a#prod_code').bind('click', function() {
+            $.getJSON($SCRIPT_ROOT + '/select_prod', {
+                post: x
+            });
+        });
+        return post;
+    }
+    function send_os(x) {
+        console.log('sending os info')
+        post = false;
+        $('a#op_code').bind('click', function() {
+            $.getJSON($SCRIPT_ROOT + '/select_os', {
+                post: x
+            });
+        });
+        return post;
+    }
+</script>
+<section class="dark-green-style">
+    <div class="green-text"><h2>Result</h2></div>
+    <table class="green-text-detail-small">
+        {% for row in result %}
+            <tr>
+                <!--<td>{{ row[0]|tojson|safe }}</td>-->
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td><a id="prod_code" href='javascript: void(0)' onclick="send_prod( {{ row[3] }} )">{{ row[3] }}</a></td>
+                <td><a id="op_code" href='javascript: void(0)' onclick="send_os( {{ row[4] }} )">{{ row[4] }}</a></td>
+                <td>{{ row[5] }}</td>
+                <td>{{ row[6] }}</td>
+                <td>{{ row[7] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</section>
+</body>
+</html>
