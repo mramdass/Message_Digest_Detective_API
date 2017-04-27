@@ -237,4 +237,11 @@ es.search(index="rds", body=specifics)
                 <td> {{ value }} </td>
            </tr>
         {% endfor %}
+
+<td><a id="prod_code" href="{{ url_for('find_question',question_id=3) }}" onclick="send_prod( {{ row[3] }} )">{{ row[3] }}</a></td>
+<td><a id="op_code" href="{{ url_for('find_question',question_id=4) }}" onclick="send_os( {{ row[4] }} )">{{ row[4] }}</a></td>
+#//Don't need the onclick
+@application.route('/find_question/<int:question_id>', methods=['GET', 'POST'])  #int has been used as a filter that only integer will be passed in the url otherwise it will give a 404 error
+def find_question(question_id):
+    return ('you asked for question{0}'.format(question_id))
 '''
