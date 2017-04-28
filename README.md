@@ -39,7 +39,8 @@ Alerts the user via email about the result of his/her batch request.
 
 ## References
 National Software Reference Library. N.p., n.d. Web. <https://www.nsrl.nist.gov/>.  
-NSRL Downloads. N.p., n.d. Web. <https://www.nsrl.nist.gov/Downloads.htm>.
+NSRL Downloads. N.p., n.d. Web. <https://www.nsrl.nist.gov/Downloads.htm>.  
+"National Institute of Standards and Technology." NIST. N.p., n.d. Web. <https://www.nist.gov/>.  
 
 ## Screenshots
 ![alt tag](https://github.com/mramdass/Message_Digest_Detective_API/blob/master/Screenshots/Page_Index.PNG)
