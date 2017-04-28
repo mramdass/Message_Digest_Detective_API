@@ -174,42 +174,13 @@
 <script type=text/javascript>
   $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
 </script>
-<script>
-    function send_prod(x) { // NOT USED
-        console.log('sending prod info')
-        post = false;
-        $('a#prod_code').bind('click', function() {
-            $.getJSON($SCRIPT_ROOT + '/select_prod', {
-                post: x
-            });
-        });
-        return post;
-    }
-    function send_os(x) { // NOT USED
-        console.log('sending os info')
-        post = false;
-        $('a#op_code').bind('click', function() {
-            $.getJSON($SCRIPT_ROOT + '/select_os', {
-                post: x
-            });
-        });
-        return post;
-    }
-</script>
 <section class="dark-green-style">
-    <div class="green-text"><h2>Result</h2></div>
+    <div class="green-text"><h2>Manufacture Information</h2></div>
     <table class="green-text-detail-small">
         {% for row in result %}
             <tr>
-                <!--<td>{{ row[0]|tojson|safe }}</td>-->
                 <td>{{ row[0] }}</td>
                 <td>{{ row[1] }}</td>
-                <td>{{ row[2] }}</td>
-                <td><a id="prod_code" href="{{ url_for('details_prod', code=row[3]) }}">{{ row[3] }}</a></td>
-                <td><a id="op_code" href="{{ url_for('details_os', code=row[4]) }}">{{ row[4] }}</a></td>
-                <td>{{ row[5] }}</td>
-                <td>{{ row[6] }}</td>
-                <td>{{ row[7] }}</td>
             </tr>
         {% endfor %}
     </table>
