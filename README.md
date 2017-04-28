@@ -9,10 +9,12 @@ The intuition behind Message Digest Detective (MDD) is to be able to scan an ent
 ## Running
 ```
 python application.py
+python input.py -r <path to directory that contains zipped RDS and detail files>
+python input.py -u <sha-1> -m <md5> -p <product code> -o <operation system code> -s <special code> -f <file name> -a <file size> -c <CRC32>
 python worker.py
-python client.py -p <path>
+python client.py -p <path to scan>
 ```
-Note: -p specifies the file system path of the directory the user wishes to scan. The System32 Folder is ideally what MDD is meant to scan.
+Note: -p specifies the file system path of the directory the user wishes to scan. The System32 Folder is ideally what MDD is meant to scan. -u specifies the (new) hash to update. This requires all other information to be supplied. -r will upload the rds to AWS Elasticsearch.
 
 ## Architecture
 ### Front End
@@ -23,7 +25,8 @@ Front end is a web interface that uses Python Flask. This takes in a keyword. It
 Should an input of SHA-1 or MD5 hash not match, the user will be redirected to the VirusTotal website. If the user input is not a SHA-1 or MD5 hash and not found, the user will receive an "unknown" response.
 
 ### Back End
-Python Flask handles searches to the AWS Elasticsearch storage among other requests such as batch requests. Batch requests will be queued using AWS SQS. A worker will then handle batch searches.
+Python Flask handles searches to the AWS Elasticsearch storage among other requests such as batch requests. Batch requests will be queued using AWS SQS. A worker will then handle batch searches.  
+A second back end is implemented for administrative purposes. This includes uploading the RDS for the first time and updating it. The input.py script is used for this.
 
 ### Worker
 Worker will take user batches from AWS SQS and run searches on AWS Elasticsearch. The results will then be posted on a topic on AWS SNS which will notify the user.
