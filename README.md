@@ -6,6 +6,14 @@
 ## Sypnosis
 The intuition behind Message Digest Detective (MDD) is to be able to scan an entire directory of sub-directories and files which may include thousands of files in less than an hour - a Windows 7 System32 scan of 3,357 files returned results in 20.5 minutes. The National Science Research Library has an RDS of beign hashes found on computers. MDD works by comparing hashes from single user input via the web interface or batch input via a script. The single request will return immediate data via the web interface while the script may take a bit longer but the goal is to then send a report of the results to the user via AWS SNS to their email. The time to beat is about 20 minutes for a batch of hashes.  
 
+## Running
+```
+python application.py
+python worker.py
+python client.py -p <path>
+```
+Note: -p specifies the file system path of the directory the user wishes to scan. The System32 Folder is ideally what MDD is meant to scan.
+
 ## Architecture
 ### Front End
 Front end is a web interface that uses Python Flask. This takes in a keyword. It could be any of the following fields:
