@@ -33,6 +33,10 @@ elastic_cloud_endpoint = 'https://2d0242d7f9f24454edb6f8e2e0f6e10c.us-east-1.aws
 elastic_cloud_username = 'elastic'
 elastic_cloud_password = 'op9044rR4zh9seNFBj2E8630'
 
+# VirusTotal URL for reviewing hashes
+vt_url = 'https://www.virustotal.com/vtapi/v2/file/report'
+vt_api_key = 'dff56d4665c68c503ce39982fedafa1ca1eab99dbc5e356576f8a47156b73a38'
+
 # 1st Attribution: http://stackoverflow.com/questions/38209061/django-elasticsearch-aws-httplib-unicodedecodeerror/38371830
 # 2nd Attribution: https://docs.python.org/2/library/json.html#basic-usage
 class JSONSerializerPython2(serializer.JSONSerializer):
@@ -61,6 +65,24 @@ def digest(): return render_template('result.html', result={'8f7fhr7fhr8fjgndksn
                                                             '5gfchgvhhhgct8h98hkk9fdfmcbdmfhd': 'Benign'})
 '''
 
+def is_md5_or_sha1(string):
+    if len(string) not in [32, 40]: return False
+    try: integer = int(string, 16)
+    except ValueError: return False
+    return True
+
+def virtustotal_call(digest):
+    global vt_api_key, vt_url
+    if not is_md5_or_sha1(digest): return False
+    parameters = {'resource': digest, 'apikey': vt_api_key}
+    try:
+        data = urllib.urlencode(parameters)
+        req = urllib2.Request(vt_url, data)
+        response = urllib2.urlopen(req)
+        return json.loads(response.read())
+    except Exception as e:
+        print e
+
 @application.route('/result', methods=['POST'])
 def digest():
     global es
@@ -88,9 +110,18 @@ def digest():
     }
     if 'hits' in res:
         if 'hits' in res['hits']:
-            if len(res['hits']['hits']) == 0:
-                x = {'Search': ['Search', keyword], 'State': ['State', 'Unknown']}
-                x = zip(x['Search'], x['State'])
+            if res['hits']['total'] == 0:
+                if not is_md5_or_sha1(keyword):
+                    x = {'Search': ['Search', keyword], 'State': ['State', 'Unknown']}
+                    x = zip(x['Search'], x['State'])
+                else:
+                    print 'Redirecting to VirusTotal'
+                    try:
+                        link = virtustotal_call(keyword)['permalink']
+                        return redirect(link)
+                    except Exception as e:
+                        print e
+                    return redirect('https://www.virustotal.com')
             else:
                 for hit in res['hits']['hits']:
                     x['ProductCode'].append(hit['_source']['ProductCode'])
@@ -102,38 +133,79 @@ def digest():
                     x['CRC32'].append(hit['_source']['CRC32'])
                     x['MD5'].append(hit['_source']['MD5'])
                 x = zip(x['SHA-1'], x['MD5'], x['FileName'], x['ProductCode'], x['OpSystemCode'], x['SpecialCode'], x['FileSize'], x['CRC32'])
-        else:
-            x = {'Search': ['Search', keyword], 'State': ['State', 'Unknown']}
-            x = zip(x['Search'], x['State'])
-    else:
-        x = {'Search': ['Search', keyword], 'State': ['State', 'Unknown']}
-        x = zip(x['Search'], x['State'])
     return render_template('result.html', result=x)
 
 @application.route('/select_prod/<string:code>', methods=['GET', 'POST'])
 def details_prod(code):
     global es
-    print 'receiving prod'
     #post = request.args.get('post', 0, type=str)
     #print post
 
-    print code
     code = int(code)
-    data = es.search(index="prod", body={"query": {"match": {"ProductCode": code}}})
-    #return render_template('index.html')
-    return jsonify(data)
+    res = es.search(index="prod", body={"query": {"match": {"ProductCode": code}}})
+    x = {
+        "ProductCode": ['ProductCode'],
+        "ProductName": ['ProductName'],
+        "ProductVersion": ['ProductVersion'],
+        "OpSystemCode": ['OpSystemCode'],
+        "MfgCode": ['MfgCode'],
+        "Language": ['Language'],
+        "ApplicationType": ['ApplicationType']
+    }
+    if 'hits' in res:
+        if 'hits' in res['hits']:
+            for hit in res['hits']['hits']:
+                x['ProductCode'].append(hit['_source']['ProductCode'])
+                x['ProductName'].append(hit['_source']['ProductName'])
+                x['ProductVersion'].append(hit['_source']['ProductVersion'])
+                x['OpSystemCode'].append(hit['_source']['OpSystemCode'])
+                x['MfgCode'].append(hit['_source']['MfgCode'])
+                x['Language'].append(hit['_source']['Language'])
+                x['ApplicationType'].append(hit['_source']['ApplicationType'])
+            x = zip(x['ProductCode'], x['ProductName'], x['ProductVersion'], x['OpSystemCode'], x['MfgCode'], x['Language'], x['ApplicationType'])
+    return render_template('prod.html', result=x)
 
 @application.route('/select_os/<string:code>', methods=['GET', 'POST'])
 def details_os(code):
     global es
-    print 'receiving os'
     #post = request.args.get('post', 0, type=str)
     #print post
 
-    print code
-    data = es.search(index="os", body={"query": {"match": {"OpSystemCode": code}}})
-    #return render_template('index.html')
-    return jsonify(data)
+    res = es.search(index="os", body={"query": {"match": {"OpSystemCode": code}}})
+    x = {
+        "OpSystemCode": ['OpSystemCode'],  # NSRL RDS has this as an integer
+        "OpSystemName": ['OpSystemName'],
+        "OpSystemVersion": ['OpSystemVersion'],
+        "MfgCode": ['MfgCode']
+    }
+    if 'hits' in res:
+        if 'hits' in res['hits']:
+            for hit in res['hits']['hits']:
+                x['OpSystemCode'].append(hit['_source']['OpSystemCode'])
+                x['OpSystemName'].append(hit['_source']['OpSystemName'])
+                x['OpSystemVersion'].append(hit['_source']['OpSystemVersion'])
+                x['MfgCode'].append(hit['_source']['MfgCode'])
+            x = zip(x['OpSystemCode'], x['OpSystemName'], x['OpSystemVersion'], x['MfgCode'])
+    return render_template('os.html', result=x)
+
+@application.route('/select_mfg/<string:code>', methods=['GET', 'POST'])
+def details_mfg(code):
+    global es
+    #post = request.args.get('post', 0, type=str)
+    #print post
+
+    res = es.search(index="mfg", body={"query": {"match": {"MfgCode": code}}})
+    x = {
+        "MfgCode": ['MfgCode'],
+        "MfgName": ['MfgName']
+    }
+    if 'hits' in res:
+        if 'hits' in res['hits']:
+            for hit in res['hits']['hits']:
+                x['MfgCode'].append(hit['_source']['MfgCode'])
+                x['MfgName'].append(hit['_source']['MfgName'])
+            x = zip(x['MfgCode'], x['MfgName'])
+    return render_template('mfg.html', result=x)
 
 @application.errorhandler(404)
 def page_not_found(e): return render_template('404.html'), 404
