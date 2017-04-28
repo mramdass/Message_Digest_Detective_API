@@ -37,6 +37,10 @@ Holds batch requests. This is a list of SHA-1 or MD5 hashes.
 ### AWS SNS
 Alerts the user via email about the result of his/her batch request.
 
+## References
+National Software Reference Library. N.p., n.d. Web. <https://www.nsrl.nist.gov/>.  
+NSRL Downloads. N.p., n.d. Web. <https://www.nsrl.nist.gov/Downloads.htm>.
+
 ## Screenshots
 ![alt tag](https://github.com/mramdass/Message_Digest_Detective_API/blob/master/Screenshots/Page_Index.PNG)
 ![alt tag](https://github.com/mramdass/Message_Digest_Detective_API/blob/master/Screenshots/Page_Result.PNG)
