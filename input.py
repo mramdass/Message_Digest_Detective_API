@@ -176,8 +176,7 @@ def upload_rds(directory='C:/Users/mramd/Documents/CS-GY 9223 - Cloud Computing/
     print 'Finished Uploading RDS Detail Files'
 
 def update_rds(update, md5, productcode, opsystemcode, specialcode, filename, allocation, crc32):
-    global id, es
-    id.value += 1
+    global es
     doc = {
         "SHA-1": update,
         "MD5": md5,
@@ -188,7 +187,7 @@ def update_rds(update, md5, productcode, opsystemcode, specialcode, filename, al
         "OpSystemCode": opsystemcode,
         "SpecialCode": specialcode
     }
-    try: es.index(index="rds", doc_type='rds', id=id.value - 1, body=doc)
+    try: es.index(index="rds", doc_type='rds', id=str(doc), body=doc)
     except Exception as e:
         print e
 
