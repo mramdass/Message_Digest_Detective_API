@@ -13,11 +13,11 @@ try:
     from elasticsearch import Elasticsearch, RequestsHttpConnection, serializer, compat, exceptions
 except Exception as e: print e
 
-rds_path = 'C:\\Users\\mramd\\Documents\\CS-GY 9223 - Cloud Computing\\Project\\Materials\\NSRLFile.txt.zip'
+zip_name = 'NSRLFile.txt.zip'
 rds_name = 'NSRLFile.txt'
-mfg_path = 'C:\\Users\\mramd\\Documents\\CS-GY 9223 - Cloud Computing\\Project\\Materials\\NSRLMfg.txt'
-os_path = 'C:\\Users\\mramd\\Documents\\CS-GY 9223 - Cloud Computing\\Project\\Materials\\NSRLOS.txt'
-prod_path = 'C:\\Users\\mramd\\Documents\\CS-GY 9223 - Cloud Computing\\Project\\Materials\\NSRLProd.txt'
+mfg_name = 'NSRLMfg.txt'
+os_name = 'NSRLOS.txt'
+prod_name = 'NSRLProd.txt'
 
 # Elastic Cloud Credentials
 elastic_cloud_endpoint = 'https://2d0242d7f9f24454edb6f8e2e0f6e10c.us-east-1.aws.found.io'
@@ -73,11 +73,6 @@ mapping_mfg = {
     "MfgName": {"type": "string"}
 }
 
-#es.indices.delete(index='rds', ignore=[400, 404])
-#es.indices.delete(index='prod', ignore=[400, 404])
-#es.indices.delete(index='os', ignore=[400, 404])
-#es.indices.delete(index='mfg', ignore=[400, 404])
-
 es.indices.create(index='rds', body=mapping, ignore=400)
 es.indices.create(index='prod', body=mapping_prod, ignore=400)
 es.indices.create(index='os', body=mapping_os, ignore=400)
@@ -110,9 +105,9 @@ def process(line):
         print e
         print line
 
-def upload_details():
-    global prod_path, os_path, mfg_path, es
-    with open(prod_path, 'r') as p:
+def upload_details(directory):
+    global prod_name, os_name, mfg_name, es
+    with open(directory + '/' + prod_name, 'r') as p:
         count = 1
         next(p)
         for line in reader(p):
@@ -131,7 +126,7 @@ def upload_details():
             except Exception as e:
                 print e
                 print line
-    with open(os_path, 'r') as o:
+    with open(directory + '/' + os_name, 'r') as o:
         count = 1
         next(o)
         for line in reader(o):
@@ -147,7 +142,7 @@ def upload_details():
             except Exception as e:
                 print e
                 print line
-    with open(mfg_path, 'r') as m:
+    with open(directory + '/' + mfg_name, 'r') as m:
         count = 1
         next(m)
         for line in reader(m):
@@ -162,10 +157,9 @@ def upload_details():
                 print e
                 print line
 
-if __name__ == '__main__':
-    #upload_details()
-    #exit(0)
-    with ZipFile(rds_path) as zf:
+def upload_rds(directory='C:/Users/mramd/Documents/CS-GY 9223 - Cloud Computing/Project/Materials'):
+    global zip_name, rds_name
+    with ZipFile(directory + '/' + zip_name) as zf:
         with zf.open(rds_name, mode='r') as f:
             next(f)
             while True:
@@ -177,6 +171,66 @@ if __name__ == '__main__':
                     print 'ID:', id.value
                 except Exception as e:
                     print e
+    print 'Finished Uploading RDS\nNow Uploading Detail Files'
+    upload_details(directory)
+    print 'Finished Uploading RDS Detail Files'
+
+def update_rds(update, md5, productcode, opsystemcode, specialcode, filename, allocation, crc32):
+    global id, es
+    id.value += 1
+    doc = {
+        "SHA-1": update,
+        "MD5": md5,
+        "CRC32": crc32,
+        "FileName": filename,
+        "FileSize": allocation,
+        "ProductCode": productcode,
+        "OpSystemCode": opsystemcode,
+        "SpecialCode": specialcode
+    }
+    try: es.index(index="rds", doc_type='rds', id=id.value - 1, body=doc)
+    except Exception as e:
+        print e
+
+def delete_rds():
+    global id, es
+    id.value = 0
+    es.indices.delete(index='rds', ignore=[400, 404])
+    es.indices.delete(index='prod', ignore=[400, 404])
+    es.indices.delete(index='os', ignore=[400, 404])
+    es.indices.delete(index='mfg', ignore=[400, 404])
+
+def main():
+    '''
+    python input.py -d <confirmation code>
+    python input.py -r <path to directory that contains zipped RDS and detail files>
+    python input.py -u <sha-1> -m <md5> -p <product code> -o <operation system code> -s <special code> -f <file name> -a <file size> -c <CRC32>
+    :return: 
+    '''
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--delete", help="Deletes the RDS and Detail files from server", required=False)
+    parser.add_argument("-r", "--rds", help="Path to the Zipped RDS", required=False)
+    parser.add_argument("-u", "--update", help="Enter the SHA-1 Hash to add", required=False)
+    parser.add_argument("-m", "--md5", help="Indicate the MD5 Hash", required=False)
+    parser.add_argument("-p", "--productcode", help="Indicate the Product Code", required=False)
+    parser.add_argument("-o", "--opsystemcode", help="Indicate the Operating System Code", required=False)
+    parser.add_argument("-s", "--specialcode", help='Indicate the special code, if none, enter ""', required=False)
+    parser.add_argument("-f", "--filename", help="Indicate the file name", required=False)
+    parser.add_argument("-a", "--allocation", help="Indicate the file size", required=False)
+    parser.add_argument("-c", "--crc32", help="Indicate the CRC32", required=False)
+    args = parser.parse_args()
+
+    if args.rds: upload_rds(args.rds)
+    elif args.rds == None and args.delete == None and (args.update and args.md5 and args.productcode and args.opsystemcode and args.specialcode and args.filename and args.allocation and args.crc32):
+        update_rds(args.update, args.md5, args.productcode, args.opsystemcode, args.specialcode, args.filename, args.allocation, args.crc32)
+    elif args.delete:
+        if args.delete == 'e39d647ca60c6ad7b06aaf460c729c02e7507047': delete_rds()
+    else:
+        print 'Usage: python input.py -r <path to directory that contains zipped RDS and detail files>\
+        \npython input.py -u <sha-1> -m <md5> -p <product code> -o <operation system code> -s <special code> -f <file name> -a <file size> -c <CRC32>'
+
+if __name__ == '__main__':
+    main()
 
 '''
 specifics = {"query": {"match": {"SHA-1":"00BDDBD88ED400EA7EA1C165EB5E7343A9119A29"}}}
