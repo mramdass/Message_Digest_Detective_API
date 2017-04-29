@@ -9,6 +9,7 @@ The intuition behind Message Digest Detective (MDD) is to be able to scan an ent
 ## Running
 ```
 python application.py
+python input.py -d <confirmation code>
 python input.py -r <path to directory that contains zipped RDS and detail files>
 python input.py -u <sha-1> -m <md5> -p <product code> -o <operation system code> -s <special code> -f <file name> -a <file size> -c <CRC32>
 python worker.py
