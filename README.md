@@ -13,7 +13,7 @@ python input.py -d <confirmation code>
 python input.py -r <path to directory that contains zipped RDS and detail files>
 python input.py -u <sha-1> -m <md5> -p <product code> -o <operation system code> -s <special code> -f <file name> -a <file size> -c <CRC32>
 python worker.py
-python client.py -p <path to scan>
+python client.py -p <path to scan> -e <email address>
 ```
 Note: -p specifies the file system path of the directory the user wishes to scan. The System32 Folder is ideally what MDD is meant to scan. -u specifies the (new) hash to update. This requires all other information to be supplied. -r will upload the rds to AWS Elasticsearch.
 
