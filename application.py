@@ -70,7 +70,7 @@ def batch():
             body = loads(request.get_data())
             body = {
                 'data': {'DataType': 'String', 'StringValue': str(body['data'])},
-                'email': {'DataType': 'String', 'StringValue': body['email']}
+                'contact': {'DataType': 'String', 'StringValue': body['contact']}
             }
             q.send_message(MessageBody="A batch", MessageAttributes=body)
     except Exception as e:
