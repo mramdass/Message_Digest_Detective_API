@@ -24,7 +24,7 @@ def get_digest(path):
             digest.update(data_32)
     return digest.hexdigest().upper()
 
-def get_digests(path, email):
+def get_digests(path, sms):
     '''Limits to first 2000 Hashes for now.'''
     global extensions
     digests = {}
@@ -40,14 +40,14 @@ def get_digests(path, email):
             count += 1
             if count >= 2000: break
         if count >= 2000: break
-    requests.post(endpoint, data=json.dumps({'data': digests, 'email': email}))
+    requests.post(endpoint, data=json.dumps({'data': digests, 'contact': '+1' + sms}))
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--email", help="Your email address to receive SNS notification", required=True)
+    parser.add_argument("-s", "--sms", help="Your phone number to receive SNS notification: 1112223333", required=True)
     parser.add_argument("-p", "--path", help="Path to scan", required=True)
     args = parser.parse_args()
-    get_digests(args.path, args.email)
+    get_digests(args.path, args.sms)
 
 if __name__ == '__main__':
     main()
