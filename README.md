@@ -35,7 +35,7 @@ Worker will take user batches from AWS SQS and run searches on AWS Elasticsearch
 Holds batch requests. This is a list of SHA-1 or MD5 hashes.
 
 ### AWS SNS
-Alerts the user via email about the result of his/her batch request.
+Alerts the user via SMS about the result of his/her batch request.
 
 ## References
 National Software Reference Library. N.p., n.d. Web. <https://www.nsrl.nist.gov/>.  
