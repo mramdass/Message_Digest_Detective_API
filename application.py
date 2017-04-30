@@ -9,7 +9,7 @@
 '''
 
 try:
-    import os, sys, json, argparse, urllib, urllib2, requests, certifi, multiprocessing
+    import os, sys, json, argparse, urllib, urllib2, requests, certifi, multiprocessing, boto3
     from flask import Flask, render_template, abort, request, redirect, jsonify, url_for
     from multiprocessing import Pool, Value, Lock
     from csv import reader
@@ -37,6 +37,13 @@ elastic_cloud_password = 'op9044rR4zh9seNFBj2E8630'
 vt_url = 'https://www.virustotal.com/vtapi/v2/file/report'
 vt_api_key = 'dff56d4665c68c503ce39982fedafa1ca1eab99dbc5e356576f8a47156b73a38'
 
+AWSAccessKeyId = "<>"
+AWSSecretKey = "<>"
+session = boto3.Session(aws_access_key_id=AWSAccessKeyId, aws_secret_access_key=AWSSecretKey, region_name='us-east-1')
+sqs = session.resource('sqs')
+q = sqs.get_queue_by_name(QueueName='rds')
+print q.url
+
 # 1st Attribution: http://stackoverflow.com/questions/38209061/django-elasticsearch-aws-httplib-unicodedecodeerror/38371830
 # 2nd Attribution: https://docs.python.org/2/library/json.html#basic-usage
 class JSONSerializerPython2(serializer.JSONSerializer):
@@ -56,14 +63,19 @@ es = Elasticsearch(
 @application.route('/')
 def index(): return render_template('index.html')
 
-'''
-@application.route('/result', methods=['POST'])
-def digest(): return render_template('result.html', result={'8f7fhr7fhr8fjgndksnf7dnfmcbdmfhd': 'Benign',\
-                                                            '9fbdjd7fhndjsjsc5cbfnfjdjf5fhndm': 'Malicious',\
-                                                            '8f7fhgcht5hgh87jhv78jhnfmcbdmfhd': 'Benign',\
-                                                            '5gfchgvhkbkkj87jhv78jhnfmcbdmfhd': 'Benign',\
-                                                            '5gfchgvhhhgct8h98hkk9fdfmcbdmfhd': 'Benign'})
-'''
+@application.route('/', methods=['GET', 'POST'])
+def batch():
+    try:
+        if request.method == 'POST':
+            body = loads(request.get_data())
+            body = {
+                'data': {'DataType': 'String', 'StringValue': str(body['data'])},
+                'email': {'DataType': 'String', 'StringValue': body['email']}
+            }
+            q.send_message(MessageBody="A batch", MessageAttributes=body)
+    except Exception as e:
+        print 'Error:', e
+    return 'OK'
 
 def is_md5_or_sha1(string):
     if len(string) not in [32, 40]: return False
@@ -95,7 +107,8 @@ def digest():
                 "fields": fields,
                 "lenient": True  # Allows checks with integer fields
             }
-        }
+        },
+        "size": 150
     }
     res = es.search(index="rds", body=specifics)
     x = {
@@ -142,7 +155,7 @@ def details_prod(code):
     #print post
 
     code = int(code)
-    res = es.search(index="prod", body={"query": {"match": {"ProductCode": code}}})
+    res = es.search(index="prod", body={"query": {"match": {"ProductCode": code}}, "size": 150})
     x = {
         "ProductCode": ['ProductCode'],
         "ProductName": ['ProductName'],
@@ -171,7 +184,7 @@ def details_os(code):
     #post = request.args.get('post', 0, type=str)
     #print post
 
-    res = es.search(index="os", body={"query": {"match": {"OpSystemCode": code}}})
+    res = es.search(index="os", body={"query": {"match": {"OpSystemCode": code}}, "size": 150})
     x = {
         "OpSystemCode": ['OpSystemCode'],  # NSRL RDS has this as an integer
         "OpSystemName": ['OpSystemName'],
@@ -194,7 +207,7 @@ def details_mfg(code):
     #post = request.args.get('post', 0, type=str)
     #print post
 
-    res = es.search(index="mfg", body={"query": {"match": {"MfgCode": code}}})
+    res = es.search(index="mfg", body={"query": {"match": {"MfgCode": code}}, "size": 150})
     x = {
         "MfgCode": ['MfgCode'],
         "MfgName": ['MfgName']
