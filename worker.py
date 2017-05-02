@@ -14,8 +14,8 @@ elastic_cloud_endpoint = 'https://2d0242d7f9f24454edb6f8e2e0f6e10c.us-east-1.aws
 elastic_cloud_username = 'elastic'
 elastic_cloud_password = 'op9044rR4zh9seNFBj2E8630'
 
-AWSAccessKeyId = "<>"
-AWSSecretKey = "<>"
+AWSAccessKeyId = ""
+AWSSecretKey = ""
 
 sns = boto3.client(
     "sns",
@@ -90,5 +90,5 @@ def worker():
 
 if __name__ == "__main__":
     print 'Running Worker'
-    p = Pool(4, worker, ())
+    p = Pool(2, worker, ())
     while True: pass
