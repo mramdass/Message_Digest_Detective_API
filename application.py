@@ -65,9 +65,11 @@ def index(): return render_template('index.html')
 
 @application.route('/', methods=['GET', 'POST'])
 def batch():
+    global es
     try:
         if request.method == 'POST':
             body = loads(request.get_data())
+            if 'query' in body: return dumps(es.search(index="rds", body=body))
             body = {
                 'data': {'DataType': 'String', 'StringValue': str(body['data'])},
                 'contact': {'DataType': 'String', 'StringValue': body['contact']}
