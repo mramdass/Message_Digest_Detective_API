@@ -14,7 +14,9 @@ python input.py -d <confirmation code>
 python input.py -r <path to directory that contains zipped RDS and detail files>
 python input.py -u <sha-1> -m <md5> -p <product code> -o <operation system code> -s <special code> -f <file name> -a <file size> -c <CRC32>
 python worker.py
-python client.py -p <path to scan> -s <phone number>
+python client.py -p <path to scan: i.e. C:\Windows\System32\WindowsPowerShell> -s <phone number: i.e. 1112223333>
+python client.py -a <SHA-1 Hash> -b <Product Code> -c <Operating System Code> -d <Special Code> -e <File Name> -f <File Size> -g <CRC32> -i <MD5 Hash>
+
 ```
 
 ## Architecture
