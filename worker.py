@@ -71,7 +71,7 @@ def worker():
                     }
                     res = es.search(index="rds", body=specifics)
                     if res['hits']['total'] == 0: unknown[i] = data[i]
-                report = 'Malicious:\n'
+                report = 'Unknown:\n'
                 for i in unknown:
                     report += i + ': '
                     for j in unknown[i]:
