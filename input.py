@@ -1,16 +1,11 @@
 try:
-    import os, sys, json, argparse, urllib, urllib2, requests, certifi, multiprocessing
-    from multiprocessing import Pool, Value, Lock
+    import os, sys, json, argparse, urllib, urllib2, requests, certifi
     from csv import reader
-    from math import ceil
-    from time import time, sleep
     from zipfile import ZipFile
-    from hashlib import sha1
-    from subprocess import check_output
     from json import dumps, loads, load, dump
-    from itertools import islice, chain
-    from datetime import datetime
     from elasticsearch import Elasticsearch, RequestsHttpConnection, serializer, compat, exceptions
+    from elasticsearch.helpers import bulk
+    from requests_aws4auth import AWS4Auth
 except Exception as e: print e
 
 zip_name = 'NSRLFile.txt.zip'
@@ -19,10 +14,14 @@ mfg_name = 'NSRLMfg.txt'
 os_name = 'NSRLOS.txt'
 prod_name = 'NSRLProd.txt'
 
-# Elastic Cloud Credentials
-elastic_cloud_endpoint = 'https://2d0242d7f9f24454edb6f8e2e0f6e10c.us-east-1.aws.found.io'
-elastic_cloud_username = 'elastic'
-elastic_cloud_password = 'op9044rR4zh9seNFBj2E8630'
+# AWS ElasticSearch Credentials
+AWSAccessKeyId = ""
+AWSSecretKey = ""
+
+aws_es_endpoint = ''
+aws_es_port = 443
+
+auth = AWS4Auth(AWSAccessKeyId, AWSSecretKey, 'us-east-1', 'es')
 
 # 1st Attribution: http://stackoverflow.com/questions/38209061/django-elasticsearch-aws-httplib-unicodedecodeerror/38371830
 # 2nd Attribution: https://docs.python.org/2/library/json.html#basic-usage
@@ -33,11 +32,12 @@ class JSONSerializerPython2(serializer.JSONSerializer):
         except (ValueError, TypeError) as e: raise exceptions.SerializationError(data, e)
 
 es = Elasticsearch(
-    [elastic_cloud_endpoint],
-    port=9243,
-    http_auth=elastic_cloud_username + ":" + elastic_cloud_password,
-    serializer=JSONSerializerPython2(),
-    ca_certs=certifi.where()
+    hosts=[{'host': aws_es_endpoint, 'port': aws_es_port}],
+    use_ssl=True,
+    http_auth=auth,
+    verify_certs=True,
+    connection_class=RequestsHttpConnection,
+    serializer=JSONSerializerPython2()
 )
 
 mapping = {
@@ -77,33 +77,6 @@ es.indices.create(index='rds', body=mapping, ignore=400)
 es.indices.create(index='prod', body=mapping_prod, ignore=400)
 es.indices.create(index='os', body=mapping_os, ignore=400)
 es.indices.create(index='mfg', body=mapping_mfg, ignore=400)
-
-id = Value('i', 1)
-lock = Lock()
-
-def initializer(*args):
-    global id, lock
-    id, lock = args
-
-def process(line):
-    global id, lock, es
-    with lock:
-        id.value += 1
-    doc = {}
-    try:
-        line = list(reader([line]))
-        doc["SHA-1"] = line[0][0].strip('"')
-        doc["MD5"] = line[0][1].strip('"')
-        doc["CRC32"] = line[0][2].strip('"')
-        doc["FileName"] = line[0][3].strip('"')
-        doc["FileSize"] = int(line[0][4])
-        doc["ProductCode"] = int(line[0][5])
-        doc["OpSystemCode"] = line[0][6].strip('"')
-        doc["SpecialCode"] = line[0][7].rstrip().strip('"')
-        es.index(index="rds", doc_type='rds', id=id.value - 1, body=doc)
-    except Exception as e:
-        print e
-        print line
 
 def upload_details(directory):
     global prod_name, os_name, mfg_name, es
@@ -157,37 +130,20 @@ def upload_details(directory):
                 print e
                 print line
 
-def upload_rds(directory='C:/Users/mramd/Documents/CS-GY 9223 - Cloud Computing/Project/Materials'):
-    global zip_name, rds_name
-    with ZipFile(directory + '/' + zip_name) as zf:
-        with zf.open(rds_name, mode='r') as f:
-            next(f)
-            while True:
-                try:
-                    lines = islice(f, 5000000)
-                    if id.value == 104318303: break
-                    pool = Pool(8, initializer, (id, lock))
-                    pool.map(process, lines)
-                    print 'ID:', id.value
-                except Exception as e:
-                    print e
-    print 'Finished Uploading RDS\nNow Uploading Detail Files'
-    upload_details(directory)
-    print 'Finished Uploading RDS Detail Files'
-
 def update_rds(update, md5, productcode, opsystemcode, specialcode, filename, allocation, crc32):
     global es
-    doc = {
-        "SHA-1": update,
-        "MD5": md5,
-        "CRC32": crc32,
-        "FileName": filename,
-        "FileSize": allocation,
-        "ProductCode": productcode,
-        "OpSystemCode": opsystemcode,
-        "SpecialCode": specialcode
-    }
-    try: es.index(index="rds", doc_type='rds', id=str(doc), body=doc)
+    try:
+        doc = {
+            "SHA-1": update,
+            "MD5": md5,
+            "CRC32": crc32,
+            "FileName": filename,
+            "FileSize": allocation,
+            "ProductCode": int(productcode),
+            "OpSystemCode": int(opsystemcode),
+            "SpecialCode": specialcode
+        }
+        es.index(index="rds", doc_type='rds', id=str(doc), body=doc)
     except Exception as e:
         print e
 
@@ -199,16 +155,56 @@ def delete_rds():
     es.indices.delete(index='os', ignore=[400, 404])
     es.indices.delete(index='mfg', ignore=[400, 404])
 
+def set_data(input_file, index_name="rds", doc_type_name="rds"):
+    with ZipFile(input_file + '/' + zip_name) as zf:
+        with zf.open(rds_name, mode='r') as f:
+            next(f)
+            for line in reader(f):
+                doc = {}
+                try:
+                    doc["SHA-1"] = line[0].strip('"')
+                    doc["MD5"] = line[1].strip('"')
+                    doc["CRC32"] = line[2].strip('"')
+                    doc["FileName"] = line[3].strip('"').decode('unicode_escape').encode('ascii','ignore')
+                    doc["FileSize"] = int(line[4])
+                    doc["ProductCode"] = int(line[5])
+                    doc["OpSystemCode"] = line[6].strip('"')
+                    doc["SpecialCode"] = line[7].rstrip().strip('"')
+                    yield {
+                        "_index": index_name,
+                        "_type": doc_type_name,
+                        "_source": doc
+                    }
+                except Exception as e:
+                    print e
+                    print line
+                    doc["SHA-1"] = line[0].strip('"')
+                    doc["MD5"] = line[1].strip('"')
+                    doc["CRC32"] = ''
+                    doc["FileName"] = ''
+                    doc["FileSize"] = -1
+                    doc["ProductCode"] = -1
+                    doc["OpSystemCode"] = ''
+                    doc["SpecialCode"] = ''
+                    yield {
+                        "_index": index_name,
+                        "_type": doc_type_name,
+                        "_source": doc
+                    }
+
+# Attribution: https://github.com/elastic/elasticsearch-py/issues/508
+def upload(es, input_file, index_name="rds", doc_type_name="rds"):
+    print 'Now Uploading RDS'
+    success, _ = bulk(es, set_data(input_file, index_name, doc_type_name))
+    print 'Finished Uploading RDS'
+    print 'Now Uploading Details'
+    upload_details(input_file)
+    print 'Finished Uploading Details'
+
 def main():
-    '''
-    python input.py -d <confirmation code>
-    python input.py -r <path to directory that contains zipped RDS and detail files>
-    python input.py -u <sha-1> -m <md5> -p <product code> -o <operation system code> -s <special code> -f <file name> -a <file size> -c <CRC32>
-    :return: 
-    '''
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--delete", help="Deletes the RDS and Detail files from server", required=False)
-    parser.add_argument("-r", "--rds", help="Path to the Zipped RDS", required=False)
+    parser.add_argument("-r", "--rds", help="Path to the directory of the Zipped RDS", required=False)
     parser.add_argument("-u", "--update", help="Enter the SHA-1 Hash to add", required=False)
     parser.add_argument("-m", "--md5", help="Indicate the MD5 Hash", required=False)
     parser.add_argument("-p", "--productcode", help="Indicate the Product Code", required=False)
@@ -219,7 +215,7 @@ def main():
     parser.add_argument("-c", "--crc32", help="Indicate the CRC32", required=False)
     args = parser.parse_args()
 
-    if args.rds: upload_rds(args.rds)
+    if args.rds: upload(es, args.rds)
     elif args.rds == None and args.delete == None and (args.update and args.md5 and args.productcode and args.opsystemcode and args.specialcode and args.filename and args.allocation and args.crc32):
         update_rds(args.update, args.md5, args.productcode, args.opsystemcode, args.specialcode, args.filename, args.allocation, args.crc32)
     elif args.delete:
@@ -230,71 +226,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-'''
-specifics = {"query": {"match": {"SHA-1":"00BDDBD88ED400EA7EA1C165EB5E7343A9119A29"}}}
-es.search(index="rds", body=specifics)
-
-{
-  "took": 6,
-  "timed_out": false,
-  "_shards": {
-    "total": 9,
-    "successful": 9,
-    "failed": 0
-  },
-  "hits": {
-    "total": 2,
-    "max_score": 10.459803,
-    "hits": [
-      {
-        "_index": "rds",
-        "_type": "rds",
-        "_id": "289",
-        "_score": 10.459803,
-        "_source": {
-          "ProductCode": 10791,
-          "SHA-1": "00BDDBD88ED400EA7EA1C165EB5E7343A9119A29",
-          "OpSystemCode": "358",
-          "SpecialCode": "",
-          "FileName": "idct_mmi.c",
-          "FileSize": 10793,
-          "CRC32": "6692D1E1",
-          "MD5": "082E4269176E0A5C29B2EC143E284AA4"
-        }
-      },
-      {
-        "_index": "rds",
-        "_type": "rds",
-        "_id": "295",
-        "_score": 10.455494,
-        "_source": {
-          "ProductCode": 14557,
-          "SHA-1": "00BDDBD88ED400EA7EA1C165EB5E7343A9119A29",
-          "OpSystemCode": "358",
-          "SpecialCode": "",
-          "FileName": "idct_mmi.c",
-          "FileSize": 10793,
-          "CRC32": "6692D1E1",
-          "MD5": "082E4269176E0A5C29B2EC143E284AA4"
-        }
-      }
-    ]
-  }
-}
-
-# Result
-{% for key, value in result.iteritems() %}
-           <tr>
-                <th> {{ key }} </th>
-                <td> {{ value }} </td>
-           </tr>
-        {% endfor %}
-
-<td><a id="prod_code" href="{{ url_for('find_question',question_id=3) }}" onclick="send_prod( {{ row[3] }} )">{{ row[3] }}</a></td>
-<td><a id="op_code" href="{{ url_for('find_question',question_id=4) }}" onclick="send_os( {{ row[4] }} )">{{ row[4] }}</a></td>
-#//Don't need the onclick
-@application.route('/find_question/<int:question_id>', methods=['GET', 'POST'])  #int has been used as a filter that only integer will be passed in the url otherwise it will give a 404 error
-def find_question(question_id):
-    return ('you asked for question{0}'.format(question_id))
-'''
